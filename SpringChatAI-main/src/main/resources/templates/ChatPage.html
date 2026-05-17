@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduAI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            overflow: hidden;
+        }
+
+        /* Scrollbar */
+        #chat-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #chat-box::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border-radius: 10px;
+        }
+
+        /* Loading dots */
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.7); }
+            40% { transform: scale(1); }
+        }
+
+        /* Chat messages */
+        .chat-message-wrapper {
+            width: 100%;
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .chat-message-wrapper.user {
+            justify-content: flex-end;
+        }
+
+        .chat-message-wrapper.ai {
+            justify-content: flex-start;
+        }
+
+        .chat-message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .chat-message.user {
+            background: #22c55e;
+            color: white;
+        }
+
+        .chat-message.ai {
+            background: #374151;
+            color: white;
+        }
+
+        /* Welcome */
+        .welcome-container {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .welcome-message {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-subtext {
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        #chat-list li.active {
+            background-color: #22c55e;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white flex h-screen">
+
+<!-- Sidebar -->
+<aside class="w-64 bg-gray-800 flex flex-col p-4">
+    <h2 class="text-xl font-bold mb-4">EduAI Assistant</h2>
+
+    <button id="new-chat"
+            class="w-full text-left px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 mb-4">
+        + New Chat
+    </button>
+
+    <div class="text-sm text-gray-400 mb-2">Recent Chats</div>
+
+    <ul id="chat-list" class="space-y-2 flex-1 overflow-y-auto"></ul>
+
+    <div class="border-t border-gray-700 pt-4 mt-4">
+        <a href="/about" class="text-gray-300 hover:text-white">About</a>
+    </div>
+</aside>
+
+<!-- Main -->
+<div class="flex flex-col flex-1">
+
+    <!-- Header -->
+    <div class="welcome-container">
+        <div class="welcome-message">Welcome to EduAI Assistant</div>
+        <div class="welcome-subtext">Your AI-powered academic support system</div>
+    </div>
+
+    <!-- Chat -->
+    <main id="chat-box">
+        <div class="text-center text-gray-400 mt-10">
+            <h2 class="text-2xl font-bold">Start New Conversation</h2>
+            <p>Ask about DSA, OS, DBMS, career guidance and more...</p>
+        </div>
+    </main>
+
+    <!-- Input -->
+    <footer class="bg-gray-800 p-4">
+        <form id="chat-form" class="flex max-w-4xl mx-auto gap-2">
+            <input id="message-input"
+                   type="text"
+                   placeholder="Send a message..."
+                   required
+                   class="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+
+            <button type="submit"
+                    class="bg-green-500 hover:bg-green-600 px-5 py-3 rounded-lg font-semibold">
+                Send
+            </button>
+        </form>
+    </footer>
+
+</div>
+
+<script>
+    const chatBox = document.getElementById("chat-box");
+    const chatForm = document.getElementById("chat-form");
+    const messageInput = document.getElementById("message-input");
+    const chatList = document.getElementById("chat-list");
+
+    let chats = JSON.parse(localStorage.getItem("chats")) || {};
+    let currentChat = null;
+
+    function saveChats() {
+        localStorage.setItem("chats", JSON.stringify(chats));
+    }
+
+    function scrollToBottom() {
+        requestAnimationFrame(() => {
+            chatBox.scrollTo({
+                top: chatBox.scrollHeight,
+                behavior: "smooth"
+            });
+        });
+    }
+
+    function appendMessage(sender, text, animate = false) {
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("chat-message-wrapper", sender === "You" ? "user" : "ai");
+
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("chat-message", sender === "You" ? "user" : "ai");
+
+        wrapper.appendChild(msgDiv);
+        chatBox.appendChild(wrapper);
+
+        if (animate && text.length < 400) {
+            typeEffect(msgDiv, text);
+        } else {
+            msgDiv.innerText = text;
+            scrollToBottom();
+        }
+    }
+
+    function typeEffect(element, text) {
+        let i = 0;
+
+        function typing() {
+            if (i < text.length) {
+                element.innerText += text.charAt(i);
+                i++;
+                scrollToBottom();
+                setTimeout(typing, 8);
+            }
+        }
+
+        typing();
+    }
+
+    function renderChat(chatName) {
+        chatBox.innerHTML = "";
+        if (!chats[chatName]) return;
+
+        chats[chatName].forEach(msg => {
+            appendMessage(msg.sender, msg.text, false);
+        });
+
+        highlightActiveChat(chatName);
+    }
+
+    function highlightActiveChat(chatName) {
+        document.querySelectorAll("#chat-list li").forEach(li => {
+            li.classList.remove("active");
+            if (li.innerText === chatName) {
+                li.classList.add("active");
+            }
+        });
+    }
+
+    function renderRecentChats() {
+        chatList.innerHTML = "";
+
+        Object.keys(chats).slice(-10).reverse().forEach(chatName => {
+            const li = document.createElement("li");
+            li.className = "px-3 py-2 rounded-lg hover:bg-gray-700 cursor-pointer";
+            li.innerText = chatName;
+
+            li.addEventListener("click", () => {
+                currentChat = chatName;
+                renderChat(chatName);
+            });
+
+            chatList.appendChild(li);
+        });
+
+        highlightActiveChat(currentChat);
+    }
+
+    chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+
+        if (!currentChat) {
+            currentChat = `Chat ${Object.keys(chats).length + 1}`;
+            chats[currentChat] = [];
+            chatBox.innerHTML = "";
+        }
+
+        chats[currentChat].push({ sender: "You", text: msg });
+        appendMessage("You", msg);
+
+        messageInput.value = "";
+
+        saveChats();
+        renderRecentChats();
+
+        const typing = document.createElement("div");
+        typing.classList.add("typing-dots");
+        typing.innerHTML = `<div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+        chatBox.appendChild(typing);
+        scrollToBottom();
+
+        try {
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({
+                    message: msg
+                })
+            });
+
+            const aiReply = await response.text();
+
+            typing.remove();
+
+            chats[currentChat].push({
+                sender: "AI",
+                text: aiReply
+            });
+
+            appendMessage("AI", aiReply, true);
+
+            saveChats();
+
+        } catch (err) {
+            typing.remove();
+
+            const errorMsg = "Error: " + err.message;
+
+            chats[currentChat].push({
+                sender: "AI",
+                text: errorMsg
+            });
+
+            appendMessage("AI", errorMsg);
+
+            saveChats();
+        }
+    });
+
+    messageInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            chatForm.requestSubmit();
+        }
+    });
+
+    document.getElementById("new-chat").addEventListener("click", () => {
+        currentChat = null;
+
+        chatBox.innerHTML = `
+            <div class="text-center text-gray-400 mt-10">
+                <h2 class="text-2xl font-bold">New Conversation</h2>
+                <p>Start chatting with your AI assistant...</p>
+            </div>
+        `;
+
+        highlightActiveChat(null);
+    });
+
+    renderRecentChats();
+</script>
+
+</body>
+</html>
