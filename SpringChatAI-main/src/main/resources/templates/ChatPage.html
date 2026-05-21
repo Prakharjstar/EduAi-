@@ -4,24 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduAI Assistant</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
+
         body {
             overflow: hidden;
         }
 
-        /* Scrollbar */
-        #chat-box::-webkit-scrollbar {
+        #chat-box::-webkit-scrollbar,
+        #chat-list::-webkit-scrollbar {
             width: 8px;
         }
 
-        #chat-box::-webkit-scrollbar-thumb {
+        #chat-box::-webkit-scrollbar-thumb,
+        #chat-list::-webkit-scrollbar-thumb {
             background: #22c55e;
             border-radius: 10px;
         }
 
-        /* Loading dots */
         .typing-dots {
             display: flex;
             gap: 4px;
@@ -37,15 +39,25 @@
             animation: bounce 1.4s infinite;
         }
 
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0.7); }
-            40% { transform: scale(1); }
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
         }
 
-        /* Chat messages */
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+
+            0%, 80%, 100% {
+                transform: scale(0.7);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
         .chat-message-wrapper {
             width: 100%;
             display: flex;
@@ -79,7 +91,6 @@
             color: white;
         }
 
-        /* Welcome */
         .welcome-container {
             text-align: center;
             padding: 20px;
@@ -90,6 +101,7 @@
             font-size: 1.8rem;
             font-weight: bold;
             background: linear-gradient(90deg, #4ade80, #22c55e);
+
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -112,6 +124,7 @@
             background-color: #22c55e;
             color: white;
         }
+
     </style>
 </head>
 
@@ -119,42 +132,94 @@
 
 <!-- Sidebar -->
 <aside class="w-64 bg-gray-800 flex flex-col p-4">
-    <h2 class="text-xl font-bold mb-4">EduAI Assistant</h2>
+
+    <h2 class="text-xl font-bold mb-4">
+        EduAI Assistant
+    </h2>
 
     <button id="new-chat"
             class="w-full text-left px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 mb-4">
         + New Chat
     </button>
 
-    <div class="text-sm text-gray-400 mb-2">Recent Chats</div>
+    <div class="flex justify-between items-center mb-2">
 
-    <ul id="chat-list" class="space-y-2 flex-1 overflow-y-auto"></ul>
+        <div class="text-sm text-gray-400">
+            Recent Chats
+        </div>
+
+        <button id="clear-all-chats"
+                class="text-xs text-red-400 hover:text-red-300">
+            Clear All
+        </button>
+
+    </div>
+
+    <ul id="chat-list"
+        class="space-y-2 flex-1 overflow-y-auto">
+    </ul>
 
     <div class="border-t border-gray-700 pt-4 mt-4">
-        <a href="/about" class="text-gray-300 hover:text-white">About</a>
+
+        <a href="/about"
+           class="text-gray-300 hover:text-white">
+            About
+        </a>
+
     </div>
+
+    <!-- Login Button -->
+    <a href="/login"
+       id="login-btn"
+       class="bg-blue-600 text-white px-4 py-2 rounded-lg mt-4 text-center">
+        Login
+    </a>
+
+    <!-- Logout Button -->
+    <button onclick="logout()"
+            id="logout-btn"
+            class="hidden bg-red-500 text-white px-4 py-2 rounded-lg mt-4">
+        Logout
+    </button>
+
 </aside>
 
 <!-- Main -->
 <div class="flex flex-col flex-1">
 
-    <!-- Header -->
     <div class="welcome-container">
-        <div class="welcome-message">Welcome to EduAI Assistant</div>
-        <div class="welcome-subtext">Your AI-powered academic support system</div>
+
+        <div class="welcome-message">
+            Welcome to EduAI Assistant
+        </div>
+
+        <div class="welcome-subtext">
+            Your AI-powered academic support system
+        </div>
+
     </div>
 
-    <!-- Chat -->
     <main id="chat-box">
+
         <div class="text-center text-gray-400 mt-10">
-            <h2 class="text-2xl font-bold">Start New Conversation</h2>
-            <p>Ask about DSA, OS, DBMS, career guidance and more...</p>
+
+            <h2 class="text-2xl font-bold">
+                Start New Conversation
+            </h2>
+
+            <p>
+                Ask about DSA, OS, DBMS, career guidance and more...
+            </p>
+
         </div>
+
     </main>
 
-    <!-- Input -->
     <footer class="bg-gray-800 p-4">
-        <form id="chat-form" class="flex max-w-4xl mx-auto gap-2">
+
+        <form id="chat-form"
+              class="flex max-w-4xl mx-auto gap-2">
+
             <input id="message-input"
                    type="text"
                    placeholder="Send a message..."
@@ -165,59 +230,95 @@
                     class="bg-green-500 hover:bg-green-600 px-5 py-3 rounded-lg font-semibold">
                 Send
             </button>
+
         </form>
+
     </footer>
 
 </div>
 
+<!-- Login Popup -->
+<div id="login-popup"
+     class="hidden fixed top-5 right-5 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50">
+
+    Login Successful ✅
+
+</div>
+
 <script>
+
     const chatBox = document.getElementById("chat-box");
     const chatForm = document.getElementById("chat-form");
     const messageInput = document.getElementById("message-input");
     const chatList = document.getElementById("chat-list");
 
     let chats = JSON.parse(localStorage.getItem("chats")) || {};
+
     let currentChat = null;
 
     function saveChats() {
+
         localStorage.setItem("chats", JSON.stringify(chats));
     }
 
     function scrollToBottom() {
+
         requestAnimationFrame(() => {
+
             chatBox.scrollTo({
                 top: chatBox.scrollHeight,
                 behavior: "smooth"
             });
+
         });
     }
 
     function appendMessage(sender, text, animate = false) {
+
         const wrapper = document.createElement("div");
-        wrapper.classList.add("chat-message-wrapper", sender === "You" ? "user" : "ai");
+
+        wrapper.classList.add(
+            "chat-message-wrapper",
+            sender === "You" ? "user" : "ai"
+        );
 
         const msgDiv = document.createElement("div");
-        msgDiv.classList.add("chat-message", sender === "You" ? "user" : "ai");
+
+        msgDiv.classList.add(
+            "chat-message",
+            sender === "You" ? "user" : "ai"
+        );
 
         wrapper.appendChild(msgDiv);
+
         chatBox.appendChild(wrapper);
 
         if (animate && text.length < 400) {
+
             typeEffect(msgDiv, text);
+
         } else {
+
             msgDiv.innerText = text;
+
             scrollToBottom();
         }
     }
 
     function typeEffect(element, text) {
+
         let i = 0;
 
         function typing() {
+
             if (i < text.length) {
+
                 element.innerText += text.charAt(i);
+
                 i++;
+
                 scrollToBottom();
+
                 setTimeout(typing, 8);
             }
         }
@@ -226,76 +327,168 @@
     }
 
     function renderChat(chatName) {
+
         chatBox.innerHTML = "";
+
         if (!chats[chatName]) return;
 
         chats[chatName].forEach(msg => {
+
             appendMessage(msg.sender, msg.text, false);
+
         });
 
         highlightActiveChat(chatName);
     }
 
     function highlightActiveChat(chatName) {
+
         document.querySelectorAll("#chat-list li").forEach(li => {
+
             li.classList.remove("active");
-            if (li.innerText === chatName) {
+
+            const span = li.querySelector("span");
+
+            if (span && span.innerText === chatName) {
+
                 li.classList.add("active");
             }
         });
     }
 
     function renderRecentChats() {
+
         chatList.innerHTML = "";
 
-        Object.keys(chats).slice(-10).reverse().forEach(chatName => {
-            const li = document.createElement("li");
-            li.className = "px-3 py-2 rounded-lg hover:bg-gray-700 cursor-pointer";
-            li.innerText = chatName;
+        Object.keys(chats)
+            .slice(-10)
+            .reverse()
+            .forEach(chatName => {
 
-            li.addEventListener("click", () => {
-                currentChat = chatName;
-                renderChat(chatName);
+                const li = document.createElement("li");
+
+                li.className =
+                    "flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-700";
+
+                const chatBtn = document.createElement("span");
+
+                chatBtn.className =
+                    "cursor-pointer flex-1 truncate";
+
+                chatBtn.innerText = chatName;
+
+                chatBtn.addEventListener("click", () => {
+
+                    currentChat = chatName;
+
+                    renderChat(chatName);
+                });
+
+                const deleteBtn = document.createElement("button");
+
+                deleteBtn.innerHTML = "✕";
+
+                deleteBtn.className =
+                    "ml-2 text-red-400 hover:text-red-300 font-bold";
+
+                deleteBtn.addEventListener("click", (e) => {
+
+                    e.stopPropagation();
+
+                    delete chats[chatName];
+
+                    if (currentChat === chatName) {
+
+                        currentChat = null;
+
+                        chatBox.innerHTML = `
+                            <div class="text-center text-gray-400 mt-10">
+                                <h2 class="text-2xl font-bold">Chat Deleted</h2>
+                                <p>Start a new conversation...</p>
+                            </div>
+                        `;
+                    }
+
+                    saveChats();
+
+                    renderRecentChats();
+                });
+
+                li.appendChild(chatBtn);
+
+                li.appendChild(deleteBtn);
+
+                chatList.appendChild(li);
             });
-
-            chatList.appendChild(li);
-        });
 
         highlightActiveChat(currentChat);
     }
 
     chatForm.addEventListener("submit", async (e) => {
+
         e.preventDefault();
 
+        const loggedIn = localStorage.getItem("loggedIn");
+
+        if (!loggedIn) {
+
+            alert("Please Login First");
+
+            window.location.href = "/login";
+
+            return;
+        }
+
         const msg = messageInput.value.trim();
+
         if (!msg) return;
 
         if (!currentChat) {
+
             currentChat = `Chat ${Object.keys(chats).length + 1}`;
+
             chats[currentChat] = [];
+
             chatBox.innerHTML = "";
         }
 
-        chats[currentChat].push({ sender: "You", text: msg });
+        chats[currentChat].push({
+            sender: "You",
+            text: msg
+        });
+
         appendMessage("You", msg);
 
         messageInput.value = "";
 
         saveChats();
+
         renderRecentChats();
 
         const typing = document.createElement("div");
+
         typing.classList.add("typing-dots");
-        typing.innerHTML = `<div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+
+        typing.innerHTML = `
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        `;
+
         chatBox.appendChild(typing);
+
         scrollToBottom();
 
         try {
+
             const response = await fetch("/chat", {
+
                 method: "POST",
+
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
                 },
+
                 body: new URLSearchParams({
                     message: msg
                 })
@@ -315,6 +508,7 @@
             saveChats();
 
         } catch (err) {
+
             typing.remove();
 
             const errorMsg = "Error: " + err.message;
@@ -331,26 +525,109 @@
     });
 
     messageInput.addEventListener("keydown", function(e) {
+
         if (e.key === "Enter" && !e.shiftKey) {
+
             e.preventDefault();
+
             chatForm.requestSubmit();
         }
     });
 
-    document.getElementById("new-chat").addEventListener("click", () => {
-        currentChat = null;
+    document.getElementById("new-chat")
+        .addEventListener("click", () => {
 
-        chatBox.innerHTML = `
-            <div class="text-center text-gray-400 mt-10">
-                <h2 class="text-2xl font-bold">New Conversation</h2>
-                <p>Start chatting with your AI assistant...</p>
-            </div>
-        `;
+            currentChat = null;
 
-        highlightActiveChat(null);
-    });
+            chatBox.innerHTML = `
+                <div class="text-center text-gray-400 mt-10">
+                    <h2 class="text-2xl font-bold">New Conversation</h2>
+                    <p>Start chatting with your AI assistant...</p>
+                </div>
+            `;
+
+            highlightActiveChat(null);
+        });
+
+    document.getElementById("clear-all-chats")
+        .addEventListener("click", () => {
+
+            if (confirm("Are you sure you want to delete all chats?")) {
+
+                chats = {};
+
+                currentChat = null;
+
+                localStorage.removeItem("chats");
+
+                chatBox.innerHTML = `
+                    <div class="text-center text-gray-400 mt-10">
+                        <h2 class="text-2xl font-bold">All Chats Cleared</h2>
+                        <p>Start a fresh conversation...</p>
+                    </div>
+                `;
+
+                renderRecentChats();
+            }
+        });
+
+  function checkLoginStatus() {
+
+    const loggedIn = localStorage.getItem("loggedIn");
+
+    const loginBtn = document.getElementById("login-btn");
+
+    const logoutBtn = document.getElementById("logout-btn");
+
+    if (loggedIn === "true") {
+
+        // Hide Login Button
+        loginBtn.classList.add("hidden");
+
+        // Show Logout Button
+        logoutBtn.classList.remove("hidden");
+
+        // Show popup only once
+        if (localStorage.getItem("loginSuccessShown") !== "true") {
+
+            const popup = document.getElementById("login-popup");
+
+            popup.classList.remove("hidden");
+
+            setTimeout(() => {
+
+                popup.classList.add("hidden");
+
+            }, 3000);
+
+            localStorage.setItem("loginSuccessShown", "true");
+        }
+
+    } else {
+
+        // Show Login Button
+        loginBtn.classList.remove("hidden");
+
+        // Hide Logout Button
+        logoutBtn.classList.add("hidden");
+    }
+}
+
+    function logout() {
+
+        localStorage.removeItem("loggedIn");
+
+        localStorage.removeItem("loginSuccessShown");
+
+        alert("Logged Out Successfully");
+
+        window.location.href = "/login";
+    }
 
     renderRecentChats();
+
+    checkLoginStatus();
+
 </script>
 
 </body>

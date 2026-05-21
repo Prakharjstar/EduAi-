@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>EduAI Login</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 flex justify-center items-center h-screen">
+
+<div class="bg-white p-8 rounded-2xl shadow-xl w-96">
+
+    <h1 class="text-3xl font-bold text-center mb-6">
+        EduAI Login
+    </h1>
+
+    <form id="loginForm"
+          action="/login"
+          method="post">
+
+        <input type="email"
+               name="email"
+               placeholder="Enter Email"
+               class="w-full border p-3 rounded-lg mb-4"
+               required>
+
+        <input type="password"
+               name="password"
+               placeholder="Enter Password"
+               class="w-full border p-3 rounded-lg mb-4"
+               required>
+
+        <button class="w-full bg-blue-600 text-white p-3 rounded-lg">
+            Login
+        </button>
+
+    </form>
+
+    <p class="text-red-500 mt-4 text-center"
+       th:text="${error}">
+    </p>
+
+    <p class="mt-4 text-center">
+        Don't have account?
+
+        <a href="/signup"
+           class="text-blue-600 font-semibold">
+            Signup
+        </a>
+    </p>
+
+</div>
+
+<script>
+
+    document.getElementById("loginForm")
+        .addEventListener("submit", function() {
+
+            // Save login status
+            localStorage.setItem("loggedIn", "true");
+
+            // Remove old popup flag
+            localStorage.removeItem("loginSuccessShown");
+        });
+
+</script>
+
+</body>
+</html>
